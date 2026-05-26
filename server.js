@@ -58,16 +58,17 @@ app.use((req, res, next) => {
 app.use(hpp());
 
 // CORS (secure configuration)
-const allowedOrigins = process.env.CLIENT_URL
-    ? process.env.CLIENT_URL.split(',').map(url => url.trim())
-    : ['http://localhost:3000'];
+// const allowedOrigins = process.env.CLIENT_URL
+//     ? process.env.CLIENT_URL.split(',').map(url => url.trim())
+//     : ['http://localhost:3000'];
 
-app.use(
-    cors({
-        origin: allowedOrigins,
-        credentials: true,
-    })
-);
+// app.use(
+//     cors({
+//         origin: allowedOrigins,
+//         credentials: true,
+//     })
+// );
+app.use(cors());
 
 // Cookie Parser
 app.use(cookieParser());
@@ -161,7 +162,7 @@ const connectDB = async () => {
             console.log(
                 `Server running in ${process.env.NODE_ENV} mode on port ${PORT}`
             );
-            console.log(`📚 API Documentation available at: http://localhost:${PORT}/api/v1/docs`);
+            console.log(`📚 API Documentation available at: /api/v1/docs`);
         });
 
         // Handle graceful shutdown
