@@ -1,158 +1,109 @@
-const swaggerJsDoc = require('swagger-jsdoc');
+const swaggerJsDoc = require("swagger-jsdoc");
 
 const options = {
     definition: {
-        openapi: '3.0.0',
+        openapi: "3.0.0",
         info: {
-            title: 'Attendance Management System API',
-            version: '1.0.0',
-            description: 'A comprehensive API for managing student attendance with support for authentication, class management, and attendance tracking.',
+            title: "Attendance Management System API",
+            version: "1.0.0",
+            description:
+                "A comprehensive API for authentication, class management, and attendance tracking.",
             contact: {
-                name: 'API Support',
-                email: 'support@example.com',
+                name: "API Support",
+                email: "support@example.com",
             },
         },
+
         servers: [
             {
-                url: 'http://localhost:5000',
-                description: 'Development server',
-            },
-            {
-                url: 'https://api.example.com',
-                description: 'Production server',
+                url: process.env.VERCEL_URL
+                    ? `https://${process.env.VERCEL_URL}`
+                    : "http://localhost:5000",
+                description: "Server URL",
             },
         ],
+
         components: {
             securitySchemes: {
                 bearerAuth: {
-                    type: 'http',
-                    scheme: 'bearer',
-                    bearerFormat: 'JWT',
-                    description: 'JWT token for authentication',
+                    type: "http",
+                    scheme: "bearer",
+                    bearerFormat: "JWT",
                 },
                 cookieAuth: {
-                    type: 'apiKey',
-                    in: 'cookie',
-                    name: 'token',
-                    description: 'Session cookie token',
+                    type: "apiKey",
+                    in: "cookie",
+                    name: "token",
                 },
             },
+
             schemas: {
                 User: {
-                    type: 'object',
+                    type: "object",
                     properties: {
-                        _id: {
-                            type: 'string',
-                            description: 'User ID',
-                        },
-                        name: {
-                            type: 'string',
-                            description: 'User full name',
-                        },
-                        email: {
-                            type: 'string',
-                            format: 'email',
-                            description: 'User email address',
-                        },
+                        _id: { type: "string" },
+                        name: { type: "string" },
+                        email: { type: "string", format: "email" },
                         role: {
-                            type: 'string',
-                            enum: ['Teacher', 'Student', 'Admin'],
-                            description: 'User role',
+                            type: "string",
+                            enum: ["Teacher", "Student", "Admin"],
                         },
-                        // isEmailVerified: {
-                        //     type: 'boolean',
-                        //     description: 'Email verification status',
-                        // },
                         createdAt: {
-                            type: 'string',
-                            format: 'date-time',
+                            type: "string",
+                            format: "date-time",
                         },
                     },
                 },
+
                 Class: {
-                    type: 'object',
+                    type: "object",
                     properties: {
-                        _id: {
-                            type: 'string',
-                            description: 'Class ID',
-                        },
-                        name: {
-                            type: 'string',
-                            description: 'Class name',
-                        },
-                        code: {
-                            type: 'string',
-                            description: 'Unique class code for joining',
-                        },
-                        teacher: {
-                            type: 'string',
-                            description: 'Teacher user ID',
-                        },
+                        _id: { type: "string" },
+                        name: { type: "string" },
+                        code: { type: "string" },
+                        teacher: { type: "string" },
                         students: {
-                            type: 'array',
-                            items: {
-                                type: 'string',
-                            },
-                            description: 'List of student IDs',
+                            type: "array",
+                            items: { type: "string" },
                         },
                         createdAt: {
-                            type: 'string',
-                            format: 'date-time',
+                            type: "string",
+                            format: "date-time",
                         },
                     },
                 },
+
                 AttendanceSession: {
-                    type: 'object',
+                    type: "object",
                     properties: {
-                        _id: {
-                            type: 'string',
-                            description: 'Session ID',
-                        },
-                        classId: {
-                            type: 'string',
-                            description: 'Class ID',
-                        },
-                        teacherId: {
-                            type: 'string',
-                            description: 'Teacher ID',
-                        },
-                        date: {
-                            type: 'string',
-                            format: 'date-time',
-                        },
+                        _id: { type: "string" },
+                        classId: { type: "string" },
+                        teacherId: { type: "string" },
+                        date: { type: "string", format: "date-time" },
                         status: {
-                            type: 'string',
-                            enum: ['active', 'closed'],
-                            description: 'Session status',
+                            type: "string",
+                            enum: ["active", "closed"],
                         },
                     },
                 },
+
                 Error: {
-                    type: 'object',
+                    type: "object",
                     properties: {
-                        success: {
-                            type: 'boolean',
-                            example: false,
-                        },
-                        message: {
-                            type: 'string',
-                        },
+                        success: { type: "boolean", example: false },
+                        message: { type: "string" },
                     },
                 },
             },
         },
+
         security: [
-            {
-                bearerAuth: [],
-            },
-            {
-                cookieAuth: [],
-            },
+            { bearerAuth: [] },
+            { cookieAuth: [] },
         ],
     },
-    apis: ['./src/routes/*.js', './src/controllers/*.js'],
+
+    apis: ["./src/routes/*.js", "./src/controllers/*.js"],
 };
 
-const specs = swaggerJsDoc(options);
-
-module.exports = specs;
+module.exports = swaggerJsDoc(options);

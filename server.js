@@ -11,10 +11,10 @@ const cookieParser = require("cookie-parser");
 const hpp = require("hpp");
 
 const swaggerUi = require("swagger-ui-express");
-const swaggerJsdoc = require("swagger-jsdoc");
+const swaggerSpec = require("./swagger");
 
 /* =========================
-   APP INIT
+   INIT APP
 ========================= */
 
 const app = express();
@@ -24,12 +24,12 @@ const app = express();
 ========================= */
 
 if (!process.env.MONGO_URI) {
-    console.error("❌ MONGO_URI missing in environment variables");
+    console.error("❌ MONGO_URI is missing");
     process.exit(1);
 }
 
 /* =========================
-   MONGODB (SAFE FOR VERCEL)
+   DATABASE (Vercel SAFE)
 ========================= */
 
 let isConnected = false;
@@ -39,10 +39,12 @@ const connectDB = async () => {
 
     try {
         const conn = await mongoose.connect(process.env.MONGO_URI);
+
         isConnected = conn.connections[0].readyState;
-        console.log("✅ MongoDB Connected");
+
+        console.log(`✅ MongoDB Connected: ${conn.connection.host}`);
     } catch (err) {
-        console.error("❌ MongoDB Error:", err.message);
+        console.error("❌ MongoDB Connection Error:", err.message);
     }
 };
 
@@ -102,43 +104,16 @@ const limiter = rateLimit({
 app.use("/api", limiter);
 
 /* =========================
-   SWAGGER CONFIG
+   SWAGGER
 ========================= */
 
-const swaggerOptions = {
-    definition: {
-        openapi: "3.0.0",
-        info: {
-            title: "Attendance Management API",
-            version: "1.0.0",
-            description: "API documentation",
-        },
-        servers: [
-            {
-                url: process.env.VERCEL_URL
-                    ? `https://${process.env.VERCEL_URL}`
-                    : "http://localhost:5000",
-            },
-        ],
-    },
-    apis: ["./src/routes/*.js"],
-};
-
-const swaggerSpec = swaggerJsdoc(swaggerOptions);
-
-/* =========================
-   SWAGGER JSON ROUTE
-========================= */
-
+// Swagger JSON
 app.get("/api/v1/swagger.json", (req, res) => {
     res.setHeader("Content-Type", "application/json");
     res.send(swaggerSpec);
 });
 
-/* =========================
-   SWAGGER UI (FIXED FOR VERCEL)
-========================= */
-
+// Swagger UI
 app.use(
     "/api/v1/docs",
     swaggerUi.serve,
@@ -166,7 +141,7 @@ app.use("/api/v1/attendance", attendanceRoutes);
 app.get("/", (req, res) => {
     res.json({
         success: true,
-        message: "API working 🚀",
+        message: "Attendance Management API running 🚀",
         docs: "/api/v1/docs",
     });
 });
@@ -188,6 +163,7 @@ app.use((req, res, next) => {
 const errorHandler = require("./src/middlewares/errorMiddleware");
 
 app.use(errorHandler);
+
 
 /* =========================
    EXPORT FOR VERCEL
