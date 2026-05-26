@@ -10,11 +10,8 @@ const rateLimit = require("express-rate-limit");
 const cookieParser = require("cookie-parser");
 const hpp = require("hpp");
 
-const swaggerUi = require("swagger-ui-express");
-const swaggerSpec = require("./swagger");
-
 /* =========================
-   INIT APP
+   APP INIT
 ========================= */
 
 const app = express();
@@ -24,7 +21,7 @@ const app = express();
 ========================= */
 
 if (!process.env.MONGO_URI) {
-    console.error("❌ MONGO_URI is missing");
+    console.error("❌ MONGO_URI missing");
     process.exit(1);
 }
 
@@ -42,9 +39,9 @@ const connectDB = async () => {
 
         isConnected = conn.connections[0].readyState;
 
-        console.log(`✅ MongoDB Connected: ${conn.connection.host}`);
+        console.log("✅ MongoDB Connected");
     } catch (err) {
-        console.error("❌ MongoDB Connection Error:", err.message);
+        console.error("❌ MongoDB Error:", err.message);
     }
 };
 
@@ -92,35 +89,66 @@ if (process.env.NODE_ENV !== "production") {
    RATE LIMITING
 ========================= */
 
-const limiter = rateLimit({
-    windowMs: 15 * 60 * 1000,
-    max: 100,
-    message: {
-        success: false,
-        message: "Too many requests, try again later",
-    },
-});
-
-app.use("/api", limiter);
+app.use(
+    "/api",
+    rateLimit({
+        windowMs: 15 * 60 * 1000,
+        max: 100,
+        message: {
+            success: false,
+            message: "Too many requests, try again later",
+        },
+    })
+);
 
 /* =========================
-   SWAGGER
+   SWAGGER JSON
 ========================= */
 
-// Swagger JSON
+const swaggerSpec = require("./swagger");
+
 app.get("/api/v1/swagger.json", (req, res) => {
     res.setHeader("Content-Type", "application/json");
     res.send(swaggerSpec);
 });
 
-// Swagger UI
-app.use(
-    "/api/v1/docs",
-    swaggerUi.serve,
-    swaggerUi.setup(swaggerSpec, {
-        explorer: true,
-    })
-);
+/* =========================
+   SWAGGER UI (CDN FIXED - VERCEL SAFE)
+========================= */
+
+app.get("/api/v1/docs", (req, res) => {
+    res.send(`
+<!DOCTYPE html>
+<html>
+<head>
+    <title>API Documentation</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swagger-ui-dist@5.11.0/swagger-ui.css">
+</head>
+
+<body>
+<div id="swagger-ui"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/swagger-ui-dist@5.11.0/swagger-ui-bundle.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/swagger-ui-dist@5.11.0/swagger-ui-standalone-preset.js"></script>
+
+<script>
+window.onload = () => {
+  window.ui = SwaggerUIBundle({
+    url: "/api/v1/swagger.json",
+    dom_id: "#swagger-ui",
+    presets: [
+      SwaggerUIBundle.presets.apis,
+      SwaggerUIStandalonePreset
+    ],
+    layout: "BaseLayout"
+  });
+};
+</script>
+
+</body>
+</html>
+    `);
+});
 
 /* =========================
    ROUTES
@@ -141,7 +169,7 @@ app.use("/api/v1/attendance", attendanceRoutes);
 app.get("/", (req, res) => {
     res.json({
         success: true,
-        message: "Attendance Management API running 🚀",
+        message: "Attendance API running 🚀",
         docs: "/api/v1/docs",
     });
 });
@@ -163,7 +191,6 @@ app.use((req, res, next) => {
 const errorHandler = require("./src/middlewares/errorMiddleware");
 
 app.use(errorHandler);
-
 
 /* =========================
    EXPORT FOR VERCEL
