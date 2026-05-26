@@ -192,5 +192,8 @@ app.use(errorHandler);
 /* =========================
    EXPORT FOR VERCEL
 ========================= */
-
+const PORT = process.env.PORT || 5000;
+app.listen(PORT, () => {
+    console.log(`Server is listening on Port ${PORT}...`);
+})
 module.exports = app;
