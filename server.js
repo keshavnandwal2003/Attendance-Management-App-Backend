@@ -14,40 +14,35 @@ const swaggerUi = require("swagger-ui-express");
 const swaggerJsdoc = require("swagger-jsdoc");
 
 /* =========================
-   VALIDATE ENV VARIABLES
-========================= */
-
-if (!process.env.MONGO_URI) {
-    console.error("❌ MONGO_URI environment variable is missing");
-    process.exit(1);
-}
-
-/* =========================
-   EXPRESS APP
+   APP INIT
 ========================= */
 
 const app = express();
 
 /* =========================
-   DATABASE CONNECTION
+   ENV CHECK
+========================= */
+
+if (!process.env.MONGO_URI) {
+    console.error("❌ MONGO_URI missing in environment variables");
+    process.exit(1);
+}
+
+/* =========================
+   MONGODB (SAFE FOR VERCEL)
 ========================= */
 
 let isConnected = false;
 
 const connectDB = async () => {
-    if (isConnected) {
-        console.log("✅ MongoDB already connected");
-        return;
-    }
+    if (isConnected) return;
 
     try {
         const conn = await mongoose.connect(process.env.MONGO_URI);
-
         isConnected = conn.connections[0].readyState;
-
-        console.log(`✅ MongoDB Connected: ${conn.connection.host}`);
+        console.log("✅ MongoDB Connected");
     } catch (err) {
-        console.error("❌ MongoDB Connection Failed:", err.message);
+        console.error("❌ MongoDB Error:", err.message);
     }
 };
 
@@ -57,32 +52,25 @@ connectDB();
    SECURITY MIDDLEWARE
 ========================= */
 
-// Helmet
 app.use(
     helmet({
         crossOriginResourcePolicy: false,
     })
 );
 
-// Body Parser
 app.use(express.json({ limit: "10kb" }));
 
-// Mongo Sanitize
 app.use((req, res, next) => {
     if (req.body) {
         req.body = mongoSanitize.sanitize(req.body);
     }
-
     next();
 });
 
-// Prevent HTTP Parameter Pollution
 app.use(hpp());
 
-// Cookie Parser
 app.use(cookieParser());
 
-// CORS
 app.use(
     cors({
         origin: "*",
@@ -90,8 +78,11 @@ app.use(
     })
 );
 
-// Logging (Development only)
-if (process.env.NODE_ENV === "development") {
+/* =========================
+   LOGGING
+========================= */
+
+if (process.env.NODE_ENV !== "production") {
     app.use(morgan("dev"));
 }
 
@@ -111,7 +102,7 @@ const limiter = rateLimit({
 app.use("/api", limiter);
 
 /* =========================
-   SWAGGER DOCUMENTATION
+   SWAGGER CONFIG
 ========================= */
 
 const swaggerOptions = {
@@ -120,8 +111,7 @@ const swaggerOptions = {
         info: {
             title: "Attendance Management API",
             version: "1.0.0",
-            description:
-                "API documentation for Attendance Management System",
+            description: "API documentation",
         },
         servers: [
             {
@@ -131,19 +121,24 @@ const swaggerOptions = {
             },
         ],
     },
-
     apis: ["./src/routes/*.js"],
 };
 
 const swaggerSpec = swaggerJsdoc(swaggerOptions);
 
-// Swagger JSON
+/* =========================
+   SWAGGER JSON ROUTE
+========================= */
+
 app.get("/api/v1/swagger.json", (req, res) => {
     res.setHeader("Content-Type", "application/json");
     res.send(swaggerSpec);
 });
 
-// Swagger UI
+/* =========================
+   SWAGGER UI (FIXED FOR VERCEL)
+========================= */
+
 app.use(
     "/api/v1/docs",
     swaggerUi.serve,
@@ -169,9 +164,9 @@ app.use("/api/v1/attendance", attendanceRoutes);
 ========================= */
 
 app.get("/", (req, res) => {
-    res.status(200).json({
+    res.json({
         success: true,
-        message: "API is running successfully 🚀",
+        message: "API working 🚀",
         docs: "/api/v1/docs",
     });
 });
@@ -195,13 +190,7 @@ const errorHandler = require("./src/middlewares/errorMiddleware");
 app.use(errorHandler);
 
 /* =========================
-   EXPORT APP FOR VERCEL
+   EXPORT FOR VERCEL
 ========================= */
-
-if (process.env.NODE_ENV !== "production") {
-    app.listen(5000, () => {
-        console.log("Server running");
-    });
-}
 
 module.exports = app;

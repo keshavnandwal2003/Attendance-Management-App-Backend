@@ -28,6 +28,7 @@
     "morgan": "^1.10.1",
     "pdfkit": "^0.18.0",
     "swagger-jsdoc": "^6.3.0",
+    "swagger-ui-dist": "^5.32.6",
     "swagger-ui-express": "^5.0.1"
   }
 }
