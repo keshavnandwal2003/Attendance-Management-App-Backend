@@ -1,0 +1,70 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Runtime data
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# Dependency directories
+node_modules/
+
+# Environment variables
+.env
+.env.*
+!.env.example
+
+# Build output
+dist/
+build/
+
+# Coverage directory
+coverage/
+
+# Temporary files
+tmp/
+temp/
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# IDE / Editor folders
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Cache files
+.cache/
+.parcel-cache/
+
+
+# PM2 process manager
+.pm2/
+
+# Docker
+docker-compose.override.yml
+
+# Uploads (optional if storing user uploads locally)
+uploads/
+
+# Test output
+jest-results.json
+
+# ESLint cache
+.eslintcache
+
+# Mac/Linux hidden files
+.*.sw?
+
+# Optional npm lockfiles (uncomment if needed)
+# package-lock.json
+# yarn.lock
+# pnpm-lock.yaml
