@@ -1,52 +1,74 @@
-require('dotenv').config();
-const express = require('express');
-const mongoose = require('mongoose');
-const cors = require('cors');
-const helmet = require('helmet');
-const mongoSanitize = require('express-mongo-sanitize');
-const morgan = require('morgan');
-const rateLimit = require('express-rate-limit');
-const cookieParser = require('cookie-parser');
-const hpp = require('hpp');
-const swaggerUi = require('swagger-ui-express');
-const swaggerSpecs = require('./swagger');
+require("dotenv").config();
 
-// Validate required environment variables
+const express = require("express");
+const mongoose = require("mongoose");
+const cors = require("cors");
+const helmet = require("helmet");
+const mongoSanitize = require("express-mongo-sanitize");
+const morgan = require("morgan");
+const rateLimit = require("express-rate-limit");
+const cookieParser = require("cookie-parser");
+const hpp = require("hpp");
+
+const swaggerUi = require("swagger-ui-express");
+const swaggerJsdoc = require("swagger-jsdoc");
+
+/* =========================
+   VALIDATE ENV VARIABLES
+========================= */
+
 if (!process.env.MONGO_URI) {
-    console.error('Error: MONGO_URI environment variable is not defined');
+    console.error("❌ MONGO_URI environment variable is missing");
     process.exit(1);
 }
 
-
-// Routes
-const authRoutes = require('./src/routes/authRoutes');
-const classRoutes = require('./src/routes/classRoutes');
-const attendanceRoutes = require('./src/routes/attendanceRoutes');
-
-// Error Handler
-const errorHandler = require('./src/middlewares/errorMiddleware');
-const AppError = require('./src/utils/AppError');
+/* =========================
+   EXPRESS APP
+========================= */
 
 const app = express();
-const PORT = process.env.PORT || 5000;
+
+/* =========================
+   DATABASE CONNECTION
+========================= */
+
+let isConnected = false;
+
+const connectDB = async () => {
+    if (isConnected) {
+        console.log("✅ MongoDB already connected");
+        return;
+    }
+
+    try {
+        const conn = await mongoose.connect(process.env.MONGO_URI);
+
+        isConnected = conn.connections[0].readyState;
+
+        console.log(`✅ MongoDB Connected: ${conn.connection.host}`);
+    } catch (err) {
+        console.error("❌ MongoDB Connection Failed:", err.message);
+    }
+};
+
+connectDB();
 
 /* =========================
    SECURITY MIDDLEWARE
 ========================= */
 
-// Helmet (secure headers)
+// Helmet
 app.use(
     helmet({
         crossOriginResourcePolicy: false,
     })
 );
 
-// Body parser
-app.use(express.json({ limit: '10kb' }));
+// Body Parser
+app.use(express.json({ limit: "10kb" }));
 
-//Mongo Sanitizer
+// Mongo Sanitize
 app.use((req, res, next) => {
-
     if (req.body) {
         req.body = mongoSanitize.sanitize(req.body);
     }
@@ -54,28 +76,23 @@ app.use((req, res, next) => {
     next();
 });
 
-//Hpp
+// Prevent HTTP Parameter Pollution
 app.use(hpp());
-
-// CORS (secure configuration)
-// const allowedOrigins = process.env.CLIENT_URL
-//     ? process.env.CLIENT_URL.split(',').map(url => url.trim())
-//     : ['http://localhost:3000'];
-
-// app.use(
-//     cors({
-//         origin: allowedOrigins,
-//         credentials: true,
-//     })
-// );
-app.use(cors());
 
 // Cookie Parser
 app.use(cookieParser());
 
-// Logging (DEV only)
-if (process.env.NODE_ENV === 'development') {
-    app.use(morgan('dev'));
+// CORS
+app.use(
+    cors({
+        origin: "*",
+        credentials: true,
+    })
+);
+
+// Logging (Development only)
+if (process.env.NODE_ENV === "development") {
+    app.use(morgan("dev"));
 }
 
 /* =========================
@@ -83,60 +100,87 @@ if (process.env.NODE_ENV === 'development') {
 ========================= */
 
 const limiter = rateLimit({
-    windowMs: 15 * 60 * 1000, // 15 minutes
-    max: 100, // limit each IP
+    windowMs: 15 * 60 * 1000,
+    max: 100,
     message: {
         success: false,
-        message: 'Too many requests, try again later',
+        message: "Too many requests, try again later",
     },
 });
 
-// app.use('/api', limiter);
+app.use("/api", limiter);
 
 /* =========================
    SWAGGER DOCUMENTATION
 ========================= */
 
-app.use(
-    '/api/v1/docs',
-    swaggerUi.serve,
-    swaggerUi.setup(swaggerSpecs, {
-        swaggerOptions: {
-            url: '/api/v1/swagger.json',
+const swaggerOptions = {
+    definition: {
+        openapi: "3.0.0",
+        info: {
+            title: "Attendance Management API",
+            version: "1.0.0",
+            description:
+                "API documentation for Attendance Management System",
         },
-        customCss: '.swagger-ui .topbar { display: none }',
-        customSiteTitle: 'Attendance Management API Docs',
+        servers: [
+            {
+                url: process.env.VERCEL_URL
+                    ? `https://${process.env.VERCEL_URL}`
+                    : "http://localhost:5000",
+            },
+        ],
+    },
+
+    apis: ["./src/routes/*.js"],
+};
+
+const swaggerSpec = swaggerJsdoc(swaggerOptions);
+
+// Swagger JSON
+app.get("/api/v1/swagger.json", (req, res) => {
+    res.setHeader("Content-Type", "application/json");
+    res.send(swaggerSpec);
+});
+
+// Swagger UI
+app.use(
+    "/api/v1/docs",
+    swaggerUi.serve,
+    swaggerUi.setup(swaggerSpec, {
+        explorer: true,
     })
 );
-
-app.get('/api/v1/swagger.json', (req, res) => {
-    res.setHeader('Content-Type', 'application/json');
-    res.send(swaggerSpecs);
-});
 
 /* =========================
    ROUTES
 ========================= */
 
-app.use('/api/v1/auth', authRoutes);
-app.use('/api/v1/classes', classRoutes);
-app.use('/api/v1/attendance', attendanceRoutes);
+const authRoutes = require("./src/routes/authRoutes");
+const classRoutes = require("./src/routes/classRoutes");
+const attendanceRoutes = require("./src/routes/attendanceRoutes");
+
+app.use("/api/v1/auth", authRoutes);
+app.use("/api/v1/classes", classRoutes);
+app.use("/api/v1/attendance", attendanceRoutes);
 
 /* =========================
    HEALTH CHECK
 ========================= */
 
-app.get('/', (req, res) => {
+app.get("/", (req, res) => {
     res.status(200).json({
         success: true,
-        message: 'API is running successfully 🚀',
-        docsUrl: '/api/v1/docs',
+        message: "API is running successfully 🚀",
+        docs: "/api/v1/docs",
     });
 });
 
 /* =========================
    404 HANDLER
 ========================= */
+
+const AppError = require("./src/utils/AppError");
 
 app.use((req, res, next) => {
     next(new AppError(`Route not found: ${req.originalUrl}`, 404));
@@ -146,55 +190,18 @@ app.use((req, res, next) => {
    GLOBAL ERROR HANDLER
 ========================= */
 
+const errorHandler = require("./src/middlewares/errorMiddleware");
+
 app.use(errorHandler);
 
 /* =========================
-   DATABASE CONNECTION
+   EXPORT APP FOR VERCEL
 ========================= */
 
-const connectDB = async () => {
-    try {
-        const conn = await mongoose.connect(process.env.MONGO_URI);
+if (process.env.NODE_ENV !== "production") {
+    app.listen(5000, () => {
+        console.log("Server running");
+    });
+}
 
-        console.log(`MongoDB Connected: ${conn.connection.host}`);
-
-        const server = app.listen(PORT, () => {
-            console.log(
-                `Server running in ${process.env.NODE_ENV} mode on port ${PORT}`
-            );
-            console.log(`📚 API Documentation available at: /api/v1/docs`);
-        });
-
-        // Handle graceful shutdown
-        const gracefulShutdown = (signal) => {
-            console.log(`${signal} signal received: closing HTTP server`);
-            server.close(() => {
-                console.log('HTTP server closed');
-                mongoose.connection.close(false, () => {
-                    console.log('MongoDB connection closed');
-                    process.exit(0);
-                });
-            });
-        };
-
-        process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
-        process.on('SIGINT', () => gracefulShutdown('SIGINT'));
-
-        // Handle unhandled promise rejections
-        process.on('unhandledRejection', (err) => {
-            console.error('Unhandled Rejection:', err.message);
-            server.close(() => process.exit(1));
-        });
-
-        // Handle uncaught exceptions
-        process.on('uncaughtException', (err) => {
-            console.error('Uncaught Exception:', err.message);
-            process.exit(1);
-        });
-    } catch (err) {
-        console.error('MongoDB Connection Failed:', err.message);
-        process.exit(1);
-    }
-};
-
-connectDB();
+module.exports = app;
